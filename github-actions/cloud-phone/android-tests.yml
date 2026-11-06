@@ -1,0 +1,51 @@
+# Run your app's instrumentation (Espresso / UI Automator) tests on a fresh BenchFleet cloud phone on every push,
+# with no phone, emulator or Android SDK of your own on the runner. Copy this file into your app's repository as
+# .github/workflows/android-tests.yml. Guide: https://benchfleet.com/docs/cloud-phones-ci
+#
+# It needs a repository secret BENCHFLEET_TOKEN: an account API token (your BenchFleet account -> API tokens).
+# Each run uses cloud phone minutes from your BenchFleet account (https://benchfleet.com/pricing); the phone is
+# always stopped at the end, passed or failed, and never runs longer than `minutes`.
+name: Android tests
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  cloud-phone:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        android: ['17', '14']  # one phone per version, each billed on its own
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Build the app and its tests
+        run: ./gradlew assembleDebug assembleDebugAndroidTest
+
+      - name: Test on a BenchFleet cloud phone
+        uses: benchfleet/cloud-phone@v1
+        with:
+          token: ${{ secrets.BENCHFLEET_TOKEN }}
+          android: ${{ matrix.android }}
+          minutes: '30'
+          timeout-minutes: '20'
+          apk: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          command: am instrument -w -r com.example.app.test/androidx.test.runner.AndroidJUnitRunner
+          logcat: logcat.txt
+
+      - name: Keep the phone's log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logcat-android-${{ matrix.android }}
+          path: logcat.txt

@@ -1,0 +1,50 @@
+# A smoke test for YOUR app, the kind a CI run starts on every build (see ../github-actions/controlhub-ci/).
+# Replace com.example.app and the element IDs with your own app's. It puts the phone in steady test conditions
+# (your app in English, animations off, the screen kept on; all put back when the run ends), opens the app fresh,
+# waits for its main screen and checks the build it shows.
+schema: controlhub/workflow@1
+id: your-app-smoke
+name: Your app smoke test
+description: Opens your app with steady device conditions and checks that its main screen and version show.
+inputs:
+  build:
+    type: string
+    default: ""
+required_capabilities: [app.control, device.settings, ui.interact, ui.read]
+defaults:
+  timeout: 10s
+  retry: {max_attempts: 2, backoff: 1s}
+steps:
+  - id: conditions
+    action: device.conditions
+    with:
+      locale: en-US
+      locale_apps: [com.example.app]
+      animations_off: true
+      stay_awake: true
+  - id: wake
+    action: device.wake
+  - id: open
+    action: app.restart
+    with:
+      package: com.example.app
+      post: {foreground: com.example.app, timeout_s: 15}
+  - id: main_screen
+    action: ui.wait_for
+    with: {selector: {resource_id: "com.example.app:id/main"}, timeout_s: 15}
+  - id: shown_version
+    action: ui.read_text
+    with: {selector: {resource_id: "com.example.app:id/version"}}
+    save_as: shown
+  - id: right_build
+    action: flow.if
+    with:
+      cond: "${inputs.build != ''}"
+      then:
+        - id: check_build
+          action: flow.assert
+          with:
+            that: "${inputs.build in vars.shown}"
+            message: "The app shows ${vars.shown}, expected build ${inputs.build}"
+outputs:
+  version: "${vars.shown}"

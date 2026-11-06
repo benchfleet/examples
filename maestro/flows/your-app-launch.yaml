@@ -1,0 +1,18 @@
+# Your own app: replace com.example.app and the texts with your app's. Opens it with a clean state, signs in with a
+# test account and checks the home screen. The email is a variable (TEST_EMAIL=...), the password a BenchFleet
+# secret (TEST_PASSWORD=<secret name>), which Maestro gets as MAESTRO_TEST_PASSWORD. Never write either into a flow.
+appId: com.example.app
+name: your-app-launch
+tags: [smoke]
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Sign in"
+    timeout: 15000
+- tapOn: "Email"
+- inputText: ${TEST_EMAIL}
+- tapOn: "Password"
+- inputText: ${MAESTRO_TEST_PASSWORD}
+- tapOn: "Sign in"
+- assertVisible: "Home"

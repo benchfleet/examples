@@ -1,0 +1,13 @@
+# Opens Android Settings fresh, checks that its list shows, takes a screenshot and goes Home. Read-only: it runs
+# on any phone, so it is a good first flow to check that your phones, Java and Maestro are set up.
+appId: com.android.settings
+name: settings-open
+tags: [smoke]
+---
+- launchApp:
+    appId: com.android.settings
+    stopApp: true
+- assertVisible:
+    text: ".*(Settings|Network|Battery|Display).*"
+- takeScreenshot: settings
+- pressKey: Home

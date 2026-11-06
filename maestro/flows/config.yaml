@@ -1,0 +1,3 @@
+# Maestro workspace configuration, read by BenchFleet as by Maestro: run every flow in this folder.
+flows:
+  - "*.yaml"

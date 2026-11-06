@@ -1,0 +1,65 @@
+# Open Settings → About phone → Software information, read the Android version shown there and check it against
+# what the phone itself reports (`getprop`). Selectors only, a check after every tap, read-only: nothing is typed or
+# changed. Works on English and Chinese Settings.
+schema: controlhub/workflow@1
+id: about-phone
+name: About phone check
+description: Open Settings → About phone → Software information, read the Android version and check it.
+required_capabilities: [app.control, shell.exec, ui.interact, ui.read]
+defaults:
+  timeout: 8s
+  retry: {max_attempts: 2, backoff: 1s}
+steps:
+  - id: wake
+    action: device.wake
+  - id: open_settings
+    action: app.restart
+    with:
+      package: com.android.settings
+      post: {foreground: com.android.settings, timeout_s: 8}
+  - id: find_about
+    action: ui.scroll_to
+    with:
+      selector: {text_in: [About phone, 关于手机, About device]}
+      max_swipes: 12
+  - id: open_about
+    action: ui.tap
+    with: {selector: {text_in: [About phone, 关于手机, About device]}}
+    post: {appears: {text_in: [Model name, 型号名称, Model]}, timeout_s: 8}
+  - id: find_software
+    action: ui.scroll_to
+    with: {selector: {text_in: [Software information, 软件信息]}}
+  - id: open_software
+    action: ui.tap
+    with: {selector: {text_in: [Software information, 软件信息]}}
+    post: {appears: {text_in: [Android version, Android 版本]}, timeout_s: 8}
+  - id: read_version
+    action: ui.read_text
+    with:
+      selector:
+        resource_id: android:id/summary
+        below: {text_in: [Android version, Android 版本]}
+    save_as: shown
+  - id: reported
+    action: shell.run
+    with: {argv: [getprop, ro.build.version.release]}
+    save_as: reported
+  - id: same_version
+    action: flow.assert
+    with:
+      that: "${strip(vars.shown) == strip(vars.reported)}"
+      message: "Settings shows ${vars.shown}, the phone reports ${strip(vars.reported)}"
+  - id: back_out
+    action: flow.loop
+    with:
+      times: 2
+      max_iterations: 2
+      steps:
+        - id: back
+          action: ui.key
+          with: {key: back}
+  - id: home
+    action: ui.key
+    with: {key: home}
+outputs:
+  android_version: "${strip(vars.reported)}"

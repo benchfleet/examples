@@ -1,0 +1,22 @@
+# A read-only health check for phones that run for a long time: reads the Android version and the battery state and
+# records the check as a status field on the phone's tile. No taps, no typing, no screenshots, no UI automation,
+# so it is safe on phones that people are only watching. Good as a scheduled workflow.
+schema: controlhub/workflow@1
+id: health-check
+name: Phone health check (read-only)
+description: Reads the Android version and battery state and records the check as an app status field.
+required_capabilities: [shell.exec, device.manage]
+defaults:
+  timeout: 20s
+steps:
+  - id: version
+    action: shell.run
+    with: {argv: [getprop, ro.build.version.release]}
+  - id: battery
+    action: shell.run
+    with: {argv: [dumpsys, battery]}
+  - id: mark
+    action: app.set_status
+    with: {package: benchfleet.health, key: last_check, value: "Android ${strip(steps.version)}"}
+outputs:
+  android: "${strip(steps.version)}"

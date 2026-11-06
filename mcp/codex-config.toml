@@ -1,0 +1,6 @@
+# Codex: add this to ~/.codex/config.toml and replace <token> with the token from BenchFleet
+# (Settings -> AI clients -> Connect an AI client...). Guide: https://benchfleet.com/docs/mcp
+[mcp_servers.benchfleet]
+command = "npx"
+args = ["-y", "benchfleet-mcp"]
+env = { BENCHFLEET_TOKEN = "<token>" }

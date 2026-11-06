@@ -1,0 +1,70 @@
+# Control flow in one small workflow: inputs, variables, a bounded for-each loop, if/else, try/catch around a step
+# that is expected to fail, `on_error: continue`, a guard that stops at a sign-in screen, and outputs.
+# Reads the main Settings list; nothing is typed.
+schema: controlhub/workflow@1
+id: control-flow
+name: Control flow demo
+inputs:
+  entries:
+    type: array
+    default: [Network, Display, Nonexistent entry]
+required_capabilities: [app.control, notify.send, ui.interact, ui.read]
+guards:
+  login_screen:
+    selector: {text_regex: "(?i)^(log ?in|sign ?in)$"}
+    action: stop_and_request_manual
+steps:
+  - id: wake
+    action: device.wake
+  - id: open
+    action: app.restart
+    with: {package: com.android.settings}
+    post: {appears: {resource_id: "android:id/title", index: 0}, timeout_s: 8}  # the list has rendered
+  - id: init
+    action: flow.set
+    with: {found: [], missing: 0}
+  - id: each_entry
+    action: flow.loop
+    with:
+      for_each: "${inputs.entries}"
+      as: entry
+      max_iterations: 20
+      steps:
+        - id: look
+          action: ui.find
+          with: {selector: {text: "${vars.entry}"}}
+          save_as: hit
+        - id: tally
+          action: flow.if
+          with:
+            cond: "${vars.hit != null}"
+            then:
+              - id: add
+                action: flow.set
+                with: {found: "${vars.found + [vars.entry]}"}
+            else:
+              - id: count_missing
+                action: flow.set
+                with: {missing: "${vars.missing + 1}"}
+  - id: guarded
+    action: flow.try
+    with:
+      steps:
+        - id: wait_never
+          action: ui.wait_for
+          with: {selector: {text: This never appears}, timeout_s: 1}
+      catch:
+        - id: note
+          action: flow.set
+          with: {caught: "${vars.error.failure}"}
+  - id: optional
+    action: ui.wait_for
+    with: {selector: {text: Also missing}, timeout_s: 1}
+    on_error: continue
+  - id: tell
+    action: notify.send
+    with: {title: Control flow demo, message: "found ${len(vars.found)}, missing ${vars.missing}"}
+outputs:
+  found: "${vars.found}"
+  missing: "${vars.missing}"
+  caught: "${vars.caught}"

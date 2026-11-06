@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "benchfleet": {
+      "command": "npx",
+      "args": ["-y", "benchfleet-mcp"],
+      "env": { "BENCHFLEET_TOKEN": "<token>" }
+    }
+  }
+}
