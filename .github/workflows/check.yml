@@ -1,0 +1,46 @@
+# Checks that every example file parses (YAML, JSON, TOML, shell). It never connects to BenchFleet, a phone or a
+# cloud phone: the examples themselves run in your own repository, with your own token.
+name: Check
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Every example parses
+        run: |
+          python3 - <<'PY'
+          import glob, json, sys, tomllib, yaml
+          bad = 0
+          for path in sorted(glob.glob("**/*.y*ml", recursive=True)):
+              try:
+                  docs = list(yaml.safe_load_all(open(path, encoding="utf-8")))
+              except yaml.YAMLError as e:
+                  print(f"::error file={path}::{e}"); bad += 1; continue
+              if path.startswith("workflows/"):
+                  wf = docs[0]
+                  for key in ("schema", "id", "name", "steps"):
+                      if key not in wf:
+                          print(f"::error file={path}::a workflow needs {key}"); bad += 1
+              print("ok", path)
+          for path in glob.glob("**/*.json", recursive=True):
+              json.load(open(path, encoding="utf-8")); print("ok", path)
+          for path in glob.glob("**/*.toml", recursive=True):
+              tomllib.load(open(path, "rb")); print("ok", path)
+          sys.exit(1 if bad else 0)
+          PY
+          for f in $(git ls-files '*.sh'); do sh -n "$f" && echo "ok $f"; done
+
+      - name: The GitHub Actions examples are valid workflows
+        run: |
+          docker run --rm -v "$PWD:/repo" --workdir /repo rhysd/actionlint:1.7.7 -color \
+            github-actions/cloud-phone/android-tests.yml
